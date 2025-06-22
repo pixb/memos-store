@@ -4,12 +4,15 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/pixb/memos-main/server/profile"
-	"github.com/pixb/memos-main/server/version"
+	"github.com/pixb/memos-store/server/profile"
+	"github.com/pixb/memos-store/server/version"
+	"github.com/pixb/memos-store/store"
+	"github.com/pixb/memos-store/store/db"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -62,23 +65,23 @@ var rootCmd = &cobra.Command{
 		}
 
 		ctx, cancel := context.WithCancel(context.Background())
-		log.Println("db.NewDBDriver(instanceProfile)")
-		// dbDriver, err := db.NewDBDriver(instanceProfile)
-		// if err != nil {
-		// 	cancel()
-		// 	slog.Error("failed to create db driver", "error", err)
-		// 	return
-		// }
+		log.Printf("db.NewDBDriver(instanceProfile), instanceProfile:%v\n", instanceProfile)
+		dbDriver, err := db.NewDBDriver(instanceProfile)
+		if err != nil {
+			cancel()
+			slog.Error("failed to create db driver", "error", err)
+			return
+		}
 
 		log.Println("store.New(dbDriver, instanceProfile)")
-		// storeInstance := store.New(dbDriver, instanceProfile)
-		// if err := storeInstance.Migrate(ctx); err != nil {
-		// 	cancel()
-		// 	slog.Error("failed to migrate", "error", err)
-		// 	return
-		// }
+		storeInstance := store.New(dbDriver, instanceProfile)
+		if err := storeInstance.Migrate(ctx); err != nil {
+			cancel()
+			slog.Error("failed to migrate", "error", err)
+			return
+		}
 
-		log.Println("server.NewServer(ctx, instanceProfile, storeInstance)")
+		// log.Println("server.NewServer(ctx, instanceProfile, storeInstance)")
 		// s, err := server.NewServer(ctx, instanceProfile, storeInstance)
 		// if err != nil {
 		// 	cancel()
@@ -92,14 +95,14 @@ var rootCmd = &cobra.Command{
 		// which is taken as the graceful shutdown signal for many systems, eg., Kubernetes, Gunicorn.
 		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
-		log.Println("s.Start(ctx)")
+		// log.Println("s.Start(ctx)")
 		// if err := s.Start(ctx); err != nil {
 		// 	if err != http.ErrServerClosed {
 		// 		slog.Error("failed to start server", "error", err)
 		// 		cancel()
 		// 	}
 		// }
-
+		//
 		printGreetings(instanceProfile)
 
 		go func() {
